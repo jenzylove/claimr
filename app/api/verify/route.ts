@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createWalletClient, http } from "viem";
+import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAIMR_ABI } from "@/lib/contracts";
@@ -82,11 +82,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log(`[VERIFY] Request body:`, body);
 
-    const { jobId, submissionData, criteria } = body;
+    const { jobId } = body;
 
-    if (!jobId || !submissionData) {
+    if (jobId === undefined || jobId === null) {
       return NextResponse.json(
-        { verified: false, reason: "Missing jobId or submissionData" },
+        { verified: false, reason: "Missing jobId" },
         { status: 400 }
       );
     }
@@ -102,6 +102,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { verified: false, reason: "AI verifier not configured" },
         { status: 500 }
+      );
+    }
+
+    // Read job details from contract
+    console.log(`[VERIFY] Reading job ${jobId} from contract...`);
+    const publicClient = createPublicClient({
+      chain: arcTestnet,
+      transport: http(),
+    });
+
+    const job = (await publicClient.readContract({
+      address: CLAIMR_ADDRESS,
+      abi: CLAIMR_ABI,
+      functionName: "getJob",
+      args: [BigInt(jobId)],
+    })) as any;
+
+    console.log(`[VERIFY] Job on-chain:`, {
+      id: job.id?.toString(),
+      title: job.title,
+      criteria: job.criteria,
+      submissionData: job.submissionData,
+      status: job.status,
+    });
+
+    const criteria = job.criteria || "";
+    const submissionData = job.submissionData || "";
+
+    if (!submissionData) {
+      return NextResponse.json(
+        { verified: false, reason: "No submission data found on-chain for this job" },
+        { status: 400 }
       );
     }
 
@@ -154,14 +186,14 @@ export async function POST(req: NextRequest) {
 
     const account = privateKeyToAccount(formattedKey);
 
-    const client = createWalletClient({
+    const walletClient = createWalletClient({
       account,
       chain: arcTestnet,
       transport: http(),
     });
 
     if (allPassed) {
-      const txHash = await client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CLAIMR_ADDRESS,
         abi: CLAIMR_ABI,
         functionName: "verifyWork",
@@ -171,7 +203,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ verified: true, results, txHash });
     } else {
       const reason = results.find((r) => !r.passed)?.reason || "Criteria not met";
-      const txHash = await client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CLAIMR_ADDRESS,
         abi: CLAIMR_ABI,
         functionName: "rejectWork",
