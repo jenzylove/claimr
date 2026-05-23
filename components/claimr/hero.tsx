@@ -36,8 +36,9 @@ export function Hero() {
         </div>
 
         {/* Main headline */}
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 text-balance">
-          Get paid for real work.{" "}
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6 text-balance leading-tight">
+          Get paid for real work.
+          <br />
           <span className="bg-gradient-to-r from-[#FF2D7A] to-[#2D6EFF] bg-clip-text text-transparent">
             Verified by AI. Settled in USDC.
           </span>
