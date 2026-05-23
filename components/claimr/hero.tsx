@@ -46,7 +46,7 @@ export function Hero() {
 
         {/* Subheadline */}
         <p className="text-lg md:text-xl text-[#a1a1aa] max-w-2xl mx-auto mb-10 leading-relaxed text-pretty">
-          The crypto creator marketplace where projects post jobs, AI verifies deliverables, and smart contracts pay you out on Arc.
+          The creator marketplace where projects post jobs, AI verifies deliverables, and smart contracts pays you out instantly on Arc.
         </p>
 
         {/* CTA Buttons - auth-aware. Returning users land here too and shouldn't
