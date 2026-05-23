@@ -37,16 +37,15 @@ export function Hero() {
 
         {/* Main headline */}
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 text-balance">
-          Get Paid.{" "}
+          Get paid for real work.{" "}
           <span className="bg-gradient-to-r from-[#FF2D7A] to-[#2D6EFF] bg-clip-text text-transparent">
-            No Trust Required.
+            Verified by AI. Settled in USDC.
           </span>
         </h1>
 
         {/* Subheadline */}
         <p className="text-lg md:text-xl text-[#a1a1aa] max-w-2xl mx-auto mb-10 leading-relaxed text-pretty">
-          The marketplace where creators and crypto projects settle deals with AI
-          verification and instant USDC payments
+          The crypto creator marketplace where projects post jobs, AI verifies deliverables, and smart contracts pay you out on Arc.
         </p>
 
         {/* CTA Buttons - auth-aware. Returning users land here too and shouldn't
