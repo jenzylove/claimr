@@ -1,11 +1,12 @@
 "use client"
 
-import { useAccount } from "wagmi"
 import { useJobs } from "@/lib/useJobs"
 import { CheckCircle, Clock } from "lucide-react"
+import { useAuth } from "@/lib/auth";
 
 export function PaymentHistory() {
-  const { address } = useAccount()
+  const { user } = useAuth();
+  const address = user?.walletAddress;
   const { jobs, isLoading } = useJobs()
 
   // Completed jobs where this wallet is the creator

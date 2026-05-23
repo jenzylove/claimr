@@ -1,27 +1,12 @@
 "use client";
 
-import { useAccount } from "wagmi";
 import { useJobs } from "@/lib/useJobs";
 import { useRouter } from "next/navigation";
 import { Clock, Users } from "lucide-react";
-
-const STATUS_LABELS: Record<number, string> = {
-  0: "Open",
-  1: "In Progress",
-  2: "Pending Review",
-  3: "Completed",
-  4: "Cancelled",
-  5: "Failed",
-};
-
-const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
-  "Open":           { color: "#60A5FA", bg: "rgba(96, 165, 250, 0.1)" },
-  "In Progress":    { color: "#EAB308", bg: "rgba(234, 179, 8, 0.1)" },
-  "Pending Review": { color: "#F97316", bg: "rgba(249, 115, 22, 0.1)" },
-  "Completed":      { color: "#22C55E", bg: "rgba(34, 197, 94, 0.1)" },
-  "Cancelled":      { color: "#EF4444", bg: "rgba(239, 68, 68, 0.1)" },
-  "Failed":         { color: "#EF4444", bg: "rgba(239, 68, 68, 0.1)" },
-};
+import { useAuth } from "@/lib/auth";
+import { motion, AnimatePresence } from "motion/react";
+import { StatePill } from "@/components/primitives/state-pill";
+import { motionDurations, motionEase } from "@/lib/motion";
 
 function getProgress(status: number) {
   if (status === 0) return 0;
@@ -36,7 +21,8 @@ function getDaysLeft(deadline: number) {
 }
 
 export function ProjectJobCards() {
-  const { address } = useAccount();
+  const { user } = useAuth();
+  const address = user?.walletAddress;
   const { jobs, isLoading } = useJobs();
   const router = useRouter();
 
@@ -62,28 +48,27 @@ export function ProjectJobCards() {
   }
 
   return (
-    <div className="space-y-4">
+    <motion.div layout className="space-y-4">
+      <AnimatePresence initial={false}>
       {myJobs.map((job) => {
-        const statusLabel = STATUS_LABELS[job.status] ?? "Unknown";
-        const style = STATUS_STYLES[statusLabel] ?? { color: "#fff", bg: "rgba(255,255,255,0.1)" };
         const progress = getProgress(job.status);
         const daysLeft = getDaysLeft(job.deadline);
 
         return (
-          <div
+          <motion.div
             key={job.id}
-            className="glass-card rounded-xl p-5 transition-all hover:border-white/20"
+            layout
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: motionDurations.base, ease: motionEase.out }}
+            className="glass-card rounded-xl p-5 hover:border-white/20"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="text-lg font-semibold text-foreground">{job.title}</h3>
-                  <span
-                    className="rounded-full px-2.5 py-1 text-xs font-medium"
-                    style={{ backgroundColor: style.bg, color: style.color }}
-                  >
-                    {statusLabel}
-                  </span>
+                  <StatePill state={job.status} />
                 </div>
 
                 <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
@@ -123,15 +108,16 @@ export function ProjectJobCards() {
               </div>
 
               <button
-                onClick={() => router.push("/project/jobs")}
+                onClick={() => router.push(`/project/jobs/${job.id}`)}
                 className="shrink-0 rounded-lg border border-[#2D6EFF] px-4 py-2 text-sm font-medium text-[#2D6EFF] transition-all hover:bg-[#2D6EFF]/10"
               >
                 View Submissions
               </button>
             </div>
-          </div>
+          </motion.div>
         );
       })}
-    </div>
+      </AnimatePresence>
+    </motion.div>
   );
 }

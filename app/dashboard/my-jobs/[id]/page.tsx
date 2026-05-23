@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useJobs } from "@/lib/useJobs";
-import { CLAIMR_ESCROW_ADDRESS as CLAIMR_ADDRESS, CLAIMR_ABI } from "@/lib/contracts";
+import { CLAIMR_ESCROW_ADDRESS as CLAIMR_ADDRESS } from "@/lib/contracts";
+import { useAuth } from "@/lib/auth";
+import { useCircleWrite } from "@/lib/useCircleWrite";
 import { DashboardSidebar } from "@/components/claimr/dashboard-sidebar";
 import { Clock, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 
@@ -15,7 +16,8 @@ function getDaysLeft(deadline: number) {
 export default function SubmitWorkPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { address } = useAccount();
+  const { user } = useAuth();
+  const address = user?.walletAddress ?? null;
   const { jobs, isLoading } = useJobs();
   const [submission, setSubmission] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -23,8 +25,7 @@ export default function SubmitWorkPage() {
 
   const job = jobs.find((j) => j.id === Number(id));
 
-  const { writeContract, data: hash, isPending, status } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { execute, isPending, isConfirming, isSuccess, isError } = useCircleWrite();
 
   const triggerVerification = async () => {
     if (!job) return;
@@ -33,11 +34,7 @@ export default function SubmitWorkPage() {
       const res = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobId: job.id,
-          submissionData: submission,
-          criteria: job.criteria,
-        }),
+        body: JSON.stringify({ jobId: job.id }),
       });
       const data = await res.json();
       setVerifyResult(data);
@@ -92,16 +89,17 @@ export default function SubmitWorkPage() {
 
   const handleSubmit = () => {
     if (!submission.trim() || !canSubmit) return;
-    writeContract({
-      address: CLAIMR_ADDRESS,
-      abi: CLAIMR_ABI,
-      functionName: "submitWork",
-      args: [BigInt(job.id), submission.trim()],
+    execute({
+      contractAddress: CLAIMR_ADDRESS,
+      abiFunctionSignature: "submitWork(uint256,string)",
+      abiParameters: [job.id.toString(), submission.trim()],
+    }).catch(() => {
+      // Error surfaced via isError below.
     });
   };
 
   const getButtonLabel = () => {
-    if (isPending) return "Confirm in MetaMask...";
+    if (isPending) return "Approve in your wallet...";
     if (isConfirming) return "Submitting on-chain...";
     if (verifying) return "AI Agent Verifying...";
     return "Submit Work for Verification";
@@ -189,7 +187,7 @@ export default function SubmitWorkPage() {
                 className="w-full rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[#FF2D7A]/50 resize-none mb-4"
               />
 
-              {status === "error" && (
+              {isError && (
                 <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-400">
                   Transaction failed. Please try again.
                 </div>

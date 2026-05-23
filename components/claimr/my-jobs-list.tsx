@@ -1,10 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { useAccount } from "wagmi"
 import { useJobs } from "@/lib/useJobs"
-import { Clock, CheckCircle, ArrowRight } from "lucide-react"
+import { useAuth } from "@/lib/auth"
+import { ArrowRight, Briefcase, CheckCircle, Clock, Inbox } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "motion/react"
+import { StatePill } from "@/components/primitives/state-pill"
+import { motionDurations, motionEase } from "@/lib/motion"
+import { EmptyState } from "@/components/claimr/empty-state"
+import { MyJobRowSkeleton } from "@/components/claimr/skeleton"
 
 const tabs = [
   { id: "active",    label: "Active" },
@@ -18,14 +23,17 @@ function getDaysLeft(deadline: number) {
 
 export function MyJobsList() {
   const [activeTab, setActiveTab] = useState("active")
-  const { address } = useAccount()
+  // r3a removed wagmi connectors, so useAccount() always returns undefined.
+  // The real Circle wallet address lives on the auth user.
+  const { user } = useAuth()
+  const address = user?.walletAddress
   const { jobs, isLoading } = useJobs()
   const router = useRouter()
 
   // Jobs where this wallet is the creator
-  const myJobs = jobs.filter(
-    (j) => j.creator.toLowerCase() === address?.toLowerCase()
-  )
+  const myJobs = address
+    ? jobs.filter((j) => j.creator.toLowerCase() === address.toLowerCase())
+    : []
 
   const filteredJobs = myJobs.filter((job) => {
     if (activeTab === "active")    return job.status === 1 // Claimed
@@ -36,8 +44,10 @@ export function MyJobsList() {
 
   if (isLoading) {
     return (
-      <div className="glass-card rounded-xl p-8 text-center">
-        <p className="text-muted-foreground">Loading your jobs from chain...</p>
+      <div className="flex flex-col gap-4">
+        <MyJobRowSkeleton />
+        <MyJobRowSkeleton />
+        <MyJobRowSkeleton />
       </div>
     )
   }
@@ -60,16 +70,22 @@ export function MyJobsList() {
         ))}
       </div>
 
-      <div className="flex flex-col gap-4">
+      <motion.div layout className="flex flex-col gap-4">
+        <AnimatePresence initial={false}>
         {filteredJobs.map((job) => {
           const daysLeft = getDaysLeft(job.deadline)
           const isCompleted = job.status === 3
           const earned = (job.amount * 0.95).toFixed(2)
 
           return (
-            <div
+            <motion.div
               key={job.id}
-              className={`glass-card rounded-xl p-5 transition-all ${
+              layout
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: motionDurations.base, ease: motionEase.out }}
+              className={`glass-card rounded-xl p-5 ${
                 isCompleted ? "opacity-70" : ""
               }`}
             >
@@ -89,7 +105,10 @@ export function MyJobsList() {
                     <p className="text-sm text-muted-foreground font-mono">
                       {job.project.slice(0, 6)}...{job.project.slice(-4)}
                     </p>
-                    <h3 className="font-semibold text-foreground">{job.title}</h3>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h3 className="font-semibold text-foreground">{job.title}</h3>
+                      <StatePill state={job.status} size="sm" />
+                    </div>
                     <div className="mt-2 flex items-center gap-4">
                       <span className="text-sm font-medium text-green-400">
                         {job.amount} USDC
@@ -100,7 +119,7 @@ export function MyJobsList() {
                           Verified & Paid ({earned} USDC)
                         </span>
                       ) : job.status === 2 ? (
-                        <span className="text-sm text-yellow-400">Work submitted — awaiting review</span>
+                        <span className="text-sm text-yellow-400">Work submitted, awaiting review.</span>
                       ) : (
                         <span className="text-sm text-muted-foreground">In progress</span>
                       )}
@@ -137,22 +156,43 @@ export function MyJobsList() {
                   )}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )
         })}
+        </AnimatePresence>
 
         {filteredJobs.length === 0 && (
-          <div className="glass-card rounded-xl p-8 text-center">
-            <p className="text-muted-foreground">
-              {activeTab === "active"
-                ? "No active jobs. Head to Discover to claim one."
+          <EmptyState
+            variant="card"
+            icon={
+              activeTab === "active"
+                ? Briefcase
                 : activeTab === "pending"
-                ? "No jobs pending review."
-                : "No completed jobs yet."}
-            </p>
-          </div>
+                ? Inbox
+                : CheckCircle
+            }
+            title={
+              activeTab === "active"
+                ? "No active jobs"
+                : activeTab === "pending"
+                ? "Nothing pending review"
+                : "No completed jobs yet"
+            }
+            description={
+              activeTab === "active"
+                ? "Claim a job from Discover to start earning USDC."
+                : activeTab === "pending"
+                ? "Jobs you have submitted will show here while the AI verifier checks them."
+                : "Completed jobs and earnings will appear here once paid out."
+            }
+            action={
+              activeTab === "active"
+                ? { label: "Browse Discover", href: "/dashboard/discover" }
+                : undefined
+            }
+          />
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }

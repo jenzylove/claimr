@@ -1,4 +1,5 @@
 import { DashboardSidebar } from "@/components/claimr/dashboard-sidebar";
+import { LivingBackground } from "@/components/primitives/living-background";
 
 export default function DashboardLayout({
   children,
@@ -7,17 +8,16 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      {/* Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -right-32 h-96 w-96 rounded-full bg-[#FF2D7A]/5 blur-3xl" />
-        <div className="absolute bottom-1/4 -left-32 h-96 w-96 rounded-full bg-[#2D6EFF]/5 blur-3xl" />
-      </div>
+      {/* Living gradient field - WebGL shader, brand-colored, pauses when tab hidden */}
+      <LivingBackground />
 
       <DashboardSidebar />
 
       {/* Main Content */}
       <main className="pl-64">
-        <div className="relative min-h-screen p-8">{children}</div>
+        <div className="relative min-h-screen p-8">
+          <div className="mx-auto max-w-6xl">{children}</div>
+        </div>
       </main>
     </div>
   );

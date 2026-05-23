@@ -1,0 +1,68 @@
+Tour fix v3 - step 6 taskbar collision
+================================
+
+The bug
+
+  Step 6 (Sign in to take action) targeted the sidebar bottom CTA,
+  which sits flush against the bottom of the viewport. Its placement
+  was "right", which positioned the tooltip beside the target with
+  a clamp of vh-220 from the top. That left 220px between the tooltip's
+  top edge and the bottom of the viewport, which sounds like enough
+  but isn't:
+
+    - The tooltip card for step 6 is ~250px tall (longer body text).
+    - If the browser window sits flush with the Windows taskbar,
+      vh includes pixels that get visually covered by the taskbar.
+    - Result: the Finish/Back buttons at the bottom of the tooltip
+      ended up overlapping with the taskbar and were unclickable.
+
+
+The fix
+
+  Step 6 now uses placement "top". The tooltip floats above the sidebar
+  CTA target, which has tons of vertical room since the target itself
+  is at the bottom of the screen. Natural reading flow: tooltip up
+  top, highlighted button right below it.
+
+  Right and left placements now use a centered-on-target approach
+  with constants:
+    TOOLTIP_H_ESTIMATE = 240   (conservative card height)
+    BOTTOM_SAFE_MARGIN = 64    (clear of taskbar + any chrome)
+
+  Tooltips can never spill within 64px of the bottom of the viewport,
+  on any platform, regardless of target position.
+
+  centeredTooltipPos (used when no target is measurable) also picks
+  up the new bottom margin so the fallback tooltip stays clear.
+
+
+Files changed
+
+  UPDATED
+    components/claimr/discover-tour.tsx   step 6 placement -> "top"
+    components/claimr/tour-overlay.tsx    new clamp constants applied
+                                           to right/left/centered paths
+
+
+Apply
+
+  Find the zip:
+    Get-ChildItem -Path C:\Users\Bright -Filter "claimr-tour-fix-v3.zip" -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select FullName
+
+  Extract:
+    cd C:\Users\Bright\Documents\GitHub\claimr
+    Expand-Archive -Force "<full-path-from-above>" -DestinationPath .
+
+    git add -A
+    git commit -m "fix(tour): step 6 placement top + taskbar-safe bottom clamps"
+    git push https://iam25th1@github.com/iam25th1/claimr.git
+
+
+Test
+
+  Step 6 (Sign in to take action) should now show its tooltip ABOVE
+  the sidebar bottom CTA, with the highlighted "Sign in to claim jobs"
+  button visible right below the tooltip. The Finish/Back buttons at
+  the bottom of the tooltip should be comfortably above the taskbar.
+
+  Walk through all 8 steps to confirm nothing else regressed.

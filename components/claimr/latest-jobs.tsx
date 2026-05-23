@@ -1,25 +1,36 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { Clock } from "lucide-react";
-import { CLAIMR_ESCROW_ADDRESS as CLAIMR_ADDRESS, CLAIMR_ABI } from "@/lib/contracts";
+import { CLAIMR_ESCROW_ADDRESS as CLAIMR_ADDRESS } from "@/lib/contracts";
 import { useJobs } from "@/lib/useJobs";
+import { filterAndSortOpenJobs } from "@/lib/jobFilters";
+import { useAuth } from "@/lib/auth";
+import { useCircleWrite } from "@/lib/useCircleWrite";
+import { isPlatformJob } from "@/lib/admin-jobs";
 import { useState, useEffect } from "react";
 
 const COLORS = ["#FF2D7A", "#2D6EFF", "#10B981", "#8B5CF6", "#F59E0B", "#06B6D4"];
 
-export function LatestJobs() {
-  const { isConnected } = useAccount();
+interface LatestJobsProps {
+  searchQuery?: string;
+  activeFilter?: string;
+}
+
+export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJobsProps = {}) {
+  const { authenticated } = useAuth();
   const router = useRouter();
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const { jobs, isLoading } = useJobs();
 
-  const { writeContract, data: hash, isPending, status } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { execute, isPending, isConfirming, isSuccess, isError } = useCircleWrite();
 
-  // All open jobs except the first 2 (those are Featured)
-  const latestJobs = jobs.filter((j) => j.status === 0).slice(2);
+  // Filter open jobs by search + category, sort newest first, skip the top 2 (those are Featured).
+  const filteredJobs = filterAndSortOpenJobs(jobs, {
+    search: searchQuery,
+    category: activeFilter,
+  });
+  const latestJobs = filteredJobs.slice(2);
 
   useEffect(() => {
     if (isSuccess) {
@@ -29,20 +40,21 @@ export function LatestJobs() {
   }, [isSuccess, router]);
 
   useEffect(() => {
-    if (status === "error") setClaimingId(null);
-  }, [status]);
+    if (isError) setClaimingId(null);
+  }, [isError]);
 
   const handleClaim = (jobId: number) => {
-    if (!isConnected) {
+    if (!authenticated) {
       router.push("/onboarding?role=creator");
       return;
     }
     setClaimingId(jobId);
-    writeContract({
-      address: CLAIMR_ADDRESS,
-      abi: CLAIMR_ABI,
-      functionName: "claimJob",
-      args: [BigInt(jobId)],
+    execute({
+      contractAddress: CLAIMR_ADDRESS,
+      abiFunctionSignature: "claimJob(uint256)",
+      abiParameters: [jobId.toString()],
+    }).catch(() => {
+      // Hook surfaces error; nothing more to do here.
     });
   };
 
@@ -51,16 +63,10 @@ export function LatestJobs() {
 
   if (isLoading) return null;
 
-  if (latestJobs.length === 0) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Latest Jobs</h2>
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center">
-          <p className="text-muted-foreground">No more open jobs right now.</p>
-        </div>
-      </div>
-    );
-  }
+  // Hide entirely if there's nothing beyond the Featured slice. Avoids the
+  // confusing "No more open jobs" empty card sitting under a Featured section
+  // that's already showing the only jobs that exist.
+  if (latestJobs.length === 0) return null;
 
   return (
     <div className="space-y-4">
@@ -94,7 +100,14 @@ export function LatestJobs() {
                       {job.amount} USDC
                     </span>
                   </div>
-                  <h3 className="mt-1 font-medium text-foreground">{job.title}</h3>
+                  <h3 className="mt-1 font-medium text-foreground flex items-center gap-2 flex-wrap">
+                    {job.title}
+                    {isPlatformJob(job.project) && (
+                      <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-gradient-to-r from-[#FF2D7A]/15 to-[#2D6EFF]/15 text-[#FF2D7A] border border-[#FF2D7A]/30 font-semibold">
+                        Platform
+                      </span>
+                    )}
+                  </h3>
 
                   <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{job.criteria}</span>

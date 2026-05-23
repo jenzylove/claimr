@@ -1,12 +1,12 @@
 "use client";
 
-import { useAccount } from "wagmi";
 import { useJobs } from "@/lib/useJobs";
-import { ProjectSidebar } from "@/components/claimr/project-sidebar";
 import { TrendingUp, Users, Target, DollarSign } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 export default function AnalyticsPage() {
-  const { address } = useAccount();
+  const { user } = useAuth();
+  const address = user?.walletAddress;
   const { jobs, isLoading } = useJobs();
 
   const myJobs = jobs.filter(
@@ -51,12 +51,9 @@ export default function AnalyticsPage() {
 
   const COLORS = ["#FF2D7A", "#2D6EFF", "#10B981", "#F59E0B"];
 
+  // flow-fix: layout cleanup
   return (
-    <div className="flex min-h-screen bg-background">
-      <ProjectSidebar />
-
-      <main className="ml-64 flex-1 p-8">
-        <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
             <p className="mt-2 text-muted-foreground">Track your campaign performance and creator ROI</p>
@@ -163,8 +160,6 @@ export default function AnalyticsPage() {
               </div>
             </>
           )}
-        </div>
-      </main>
     </div>
   );
 }

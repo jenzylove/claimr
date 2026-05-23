@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, PlusCircle, Briefcase, Vault, BarChart3, Settings, BadgeCheck, LogOut } from "lucide-react";
-import { useAccount } from "wagmi";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/lib/auth";
+import { Logo } from "@/components/claimr/logo";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Overview", href: "/project" },
@@ -18,17 +18,17 @@ const menuItems = [
 
 export function ProjectSidebar() {
   const pathname = usePathname();
-  const { user, logout, authenticated } = usePrivy();
-  const { address } = useAccount();
+  const { user, logout, authenticated } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  const displayName = user?.email?.address
-    || user?.twitter?.username && `@${user.twitter.username}`
-    || address && `${address.slice(0, 6)}...${address.slice(-4)}`
-    || "Project";
+  const displayName =
+    user?.email ||
+    (user?.walletAddress
+      ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
+      : "Project");
 
   const avatarLetter = displayName.slice(0, 1).toUpperCase();
 
@@ -41,7 +41,7 @@ export function ProjectSidebar() {
     <aside className="fixed left-0 top-0 h-screen w-64 flex flex-col border-r border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="p-6">
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#FF2D7A] to-[#2D6EFF]" />
+          <Logo size={32} />
           <span className="text-xl font-bold text-foreground">Claimr</span>
         </Link>
       </div>
@@ -80,7 +80,7 @@ export function ProjectSidebar() {
               <div className="flex items-center gap-1 mt-0.5">
                 <BadgeCheck className="h-3.5 w-3.5 text-[#2D6EFF]" />
                 <p className="text-xs text-[#2D6EFF]">
-                  {authenticated ? "Verified Project" : "Connected"}
+                  {authenticated ? "Verified Project" : "Sign in"}
                 </p>
               </div>
             </div>

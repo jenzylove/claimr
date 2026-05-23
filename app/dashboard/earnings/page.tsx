@@ -1,20 +1,37 @@
-import { EarningsStats } from "@/components/claimr/earnings-stats"
-import { EarningsChart } from "@/components/claimr/earnings-chart"
-import { PaymentHistory } from "@/components/claimr/payment-history"
+import { PageHeader, SectionHeader } from "@/components/claimr/page-header";
+import { EarningsStats } from "@/components/claimr/earnings-stats";
+import { EarningsChart } from "@/components/claimr/earnings-chart";
+import { PaymentHistory } from "@/components/claimr/payment-history";
+import { GuestBanner } from "@/components/claimr/guest-banner";
 
 export default function EarningsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Earnings</h1>
-        <p className="mt-1 text-muted-foreground">Your complete payment history</p>
-      </div>
+    <div className="space-y-10">
+      <PageHeader
+        eyebrow="Creator"
+        title="Earnings"
+        subtitle="Your payment history across every job you've claimed."
+      />
 
-      <EarningsStats />
+      <GuestBanner
+        message="Sign in to see earnings from jobs you've completed."
+        returnPath="/dashboard/earnings"
+      />
 
-      <EarningsChart />
+      <section>
+        <SectionHeader title="At a glance" />
+        <EarningsStats />
+      </section>
 
-      <PaymentHistory />
+      <section>
+        <SectionHeader title="Monthly earnings" />
+        <EarningsChart />
+      </section>
+
+      <section>
+        <SectionHeader title="Payment history" />
+        <PaymentHistory />
+      </section>
     </div>
-  )
+  );
 }

@@ -1,0 +1,72 @@
+Batch 4 - Empty states + error surfaces
+========================================
+
+What's in this zip
+------------------
+NEW FILES (drop into the project, no patching needed):
+  lib/errors.ts
+  components/claimr/empty-state.tsx
+  components/claimr/error-callout.tsx
+  components/claimr/skeleton.tsx
+
+PATCH SCRIPT (modifies 4 existing files in place):
+  apply-batch-4.js
+
+The 4 files it patches:
+  app/project/jobs/page.tsx
+  app/project/post/page.tsx
+  components/claimr/transactions-list.tsx
+  components/claimr/my-jobs-list.tsx
+
+
+Apply instructions
+------------------
+
+1. The zip lands at:
+   C:\Users\Bright\Documents\GitHub\claimr-batch-4.zip
+
+2. Extract OVER the existing claimr folder, preserving structure:
+
+   PowerShell (try first):
+   cd C:\Users\Bright\Documents\GitHub ; Expand-Archive -Force claimr-batch-4.zip -DestinationPath claimr
+
+   If `git status` shows no new files after that command, PowerShell
+   Expand-Archive silently no-op'd. Use File Explorer instead:
+   right-click claimr-batch-4.zip > Extract All > target
+   C:\Users\Bright\Documents\GitHub\claimr > overwrite when prompted.
+
+3. Apply the patches:
+   cd C:\Users\Bright\Documents\GitHub\claimr ; node apply-batch-4.js
+
+   The script self-deletes on success. If it stays behind, an edit failed
+   and the script prints which file + which edit. Re-running is safe
+   (idempotent, skips already-patched files).
+
+4. Verify in dev:
+   npm run dev
+
+   Spot-check pages:
+   - /project/jobs           skeletons on load, EmptyState when filter has 0 hits
+   - /dashboard/my-jobs      per-tab empty states (active / pending / completed)
+   - /project/post           submit with 0 USDC -> ErrorCallout with "Fund wallet" button
+   - Recent Transactions     skeletons on load, Receipt-icon empty state when no payments
+
+
+Commit + push
+-------------
+
+   cd C:\Users\Bright\Documents\GitHub\claimr ; git add -A ; git commit -m "batch 4: empty states + error surfaces" ; git push https://iam25th1@github.com/iam25th1/claimr.git
+
+
+Notes
+-----
+
+- ErrorCallout auto-detects insufficient-USDC errors (Circle code 155258 +
+  text variants) and surfaces a "Fund wallet" CTA that opens the existing
+  FundWalletModal in place. No auto-pop.
+- Indexing-latency errors (Circle 155257) get a "Refresh" CTA.
+- Cancelled / timed-out / rate-limited / network errors all route to the
+  right CTA via lib/errors.ts -> formatChainError().
+- DiscoverFeed empty state was NOT patched (component not pasted in the
+  thread). If you want it covered, paste components/claimr/discover-feed.tsx
+  and it goes in a follow-up patch.

@@ -1,25 +1,34 @@
 "use client"
 
 import { Wallet } from "lucide-react"
-import { useAccount, useReadContract } from "wagmi"
+import { useReadContract } from "wagmi"
 import { formatUnits } from "viem"
+import { useAuth } from "@/lib/auth"
 import { USDC_ADDRESS, EURC_ADDRESS, USDC_ABI } from "@/lib/contracts"
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const
+
 export function WalletBalances() {
-  const { address } = useAccount()
+  // r3a removed wagmi connectors, so useAccount() always returns undefined.
+  // The real Circle wallet address lives on the auth user.
+  const { user } = useAuth()
+  const address = (user?.walletAddress ?? ZERO_ADDRESS) as `0x${string}`
+  const hasWallet = address !== ZERO_ADDRESS
 
   const { data: usdcRaw } = useReadContract({
     address: USDC_ADDRESS,
     abi: USDC_ABI,
     functionName: "balanceOf",
-    args: [address ?? "0x0000000000000000000000000000000000000000"],
+    args: [address],
+    query: { enabled: hasWallet },
   })
 
   const { data: eurcRaw } = useReadContract({
     address: EURC_ADDRESS,
     abi: USDC_ABI, // same ERC-20 interface
     functionName: "balanceOf",
-    args: [address ?? "0x0000000000000000000000000000000000000000"],
+    args: [address],
+    query: { enabled: hasWallet },
   })
 
   const usdcBalance = usdcRaw ? Number(formatUnits(usdcRaw as bigint, 6)).toFixed(2) : "0.00"
@@ -67,6 +76,10 @@ export function WalletBalances() {
 }
 
 export function WalletHeader() {
+  const { user } = useAuth()
+  const address = user?.walletAddress
+  const shortAddr = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null
+
   return (
     <div className="mb-8">
       <div className="flex items-center gap-3 mb-2">
@@ -74,7 +87,13 @@ export function WalletHeader() {
         <h1 className="text-2xl font-bold text-foreground">Your Wallet</h1>
       </div>
       <p className="text-muted-foreground text-sm">
-        Embedded wallet powered by Circle. Export your private key anytime in Settings.
+        Embedded wallet powered by Circle.
+        {shortAddr && (
+          <>
+            {" "}
+            <span className="font-mono text-foreground/80">{shortAddr}</span>
+          </>
+        )}
       </p>
     </div>
   )

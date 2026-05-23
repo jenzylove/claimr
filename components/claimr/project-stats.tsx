@@ -1,11 +1,16 @@
 "use client";
 
-import { useAccount } from "wagmi";
 import { useJobs } from "@/lib/useJobs";
-import { Vault, Briefcase, CheckCircle2 } from "lucide-react";
+import { Vault, Briefcase, CheckCircle2, Wallet } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { useReadContract } from "wagmi";
+import { formatUnits } from "viem";
+import { USDC_ADDRESS, USDC_ABI } from "@/lib/contracts";
+import { AnimatedNumber } from "@/components/primitives/animated-number";
 
 export function ProjectStats() {
-  const { address } = useAccount();
+  const { user } = useAuth();
+  const address = user?.walletAddress;
   const { jobs, isLoading } = useJobs();
 
   const myJobs = jobs.filter(
@@ -22,59 +27,94 @@ export function ProjectStats() {
 
   const completedCount = myJobs.filter((j) => j.status === 3).length;
 
-  const stats = [
+  // Personal USDC balance. Refetches via wagmi cache.
+  const { data: usdcRaw } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: USDC_ABI,
+    functionName: "balanceOf",
+    args: [(address ?? "0x0000000000000000000000000000000000000000") as `0x${string}`],
+    query: { enabled: !!address, refetchInterval: 8000 },
+  });
+  const usdcBalance = usdcRaw
+    ? Number(formatUnits(usdcRaw as bigint, 6))
+    : 0;
+
+  const cards = [
     {
-      label: "Escrowed",
-      value: isLoading ? "..." : escrowed.toString(),
+      label: "Your USDC",
+      value: usdcBalance,
+      unit: "USDC",
+      icon: Wallet,
+      color: "#10B981",
+      decimals: true,
+    },
+    {
+      label: "In escrow",
+      value: escrowed,
       unit: "USDC",
       icon: Vault,
       color: "#2D6EFF",
-      bgColor: "rgba(45, 110, 255, 0.1)",
     },
     {
-      label: "Active Jobs",
-      value: isLoading ? "..." : activeCount.toString(),
+      label: "Active jobs",
+      value: activeCount,
       unit: "",
       icon: Briefcase,
       color: "#FF2D7A",
-      bgColor: "rgba(255, 45, 122, 0.1)",
+      integer: true,
     },
     {
-      label: "Completed Jobs",
-      value: isLoading ? "..." : completedCount.toString(),
+      label: "Completed",
+      value: completedCount,
       unit: "",
       icon: CheckCircle2,
-      color: "#22C55E",
-      bgColor: "rgba(34, 197, 94, 0.1)",
+      color: "#A1A1AA",
+      integer: true,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {stats.map((stat) => (
-        <div
-          key={stat.label}
-          className="glass-card rounded-xl p-5 transition-all hover:border-white/20"
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="mt-2 text-3xl font-bold text-foreground">
-                {stat.value}
-                <span className="ml-1 text-lg font-medium text-muted-foreground">
-                  {stat.unit}
-                </span>
-              </p>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map(
+        ({ label, value, unit, icon: Icon, color, integer, decimals }) => (
+          <div
+            key={label}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span style={{ color }}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                {label}
+              </span>
             </div>
-            <div
-              className="rounded-lg p-2.5"
-              style={{ backgroundColor: stat.bgColor }}
-            >
-              <stat.icon className="h-5 w-5" style={{ color: stat.color }} />
+            <div className="mt-3 flex items-baseline gap-2">
+              {isLoading && !decimals ? (
+                <span className="h-7 w-20 rounded bg-white/5 animate-pulse" />
+              ) : (
+                <span className="text-2xl font-bold text-foreground tabular-nums">
+                  <AnimatedNumber
+                    value={value}
+                    format={
+                      integer
+                        ? undefined
+                        : decimals
+                        ? (n) => n.toFixed(2)
+                        : (n) => Math.round(n).toLocaleString()
+                    }
+                  />
+                </span>
+              )}
+              {unit && (
+                <span className="text-xs text-muted-foreground font-medium">
+                  {unit}
+                </span>
+              )}
             </div>
           </div>
-        </div>
-      ))}
+        )
+      )}
     </div>
   );
 }

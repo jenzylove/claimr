@@ -1,65 +1,132 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useMemo } from "react";
+import { motion } from "motion/react";
+import { useJobs } from "@/lib/useJobs";
+import { useAuth } from "@/lib/auth";
+import { TrendingUp } from "lucide-react";
+import { AnimatedNumber } from "@/components/primitives/animated-number";
+import { motionEase } from "@/lib/motion";
 
-const monthlyData = [
-  { month: "Dec", amount: 120 },
-  { month: "Jan", amount: 280 },
-  { month: "Feb", amount: 190 },
-  { month: "Mar", amount: 450 },
-  { month: "Apr", amount: 540 },
-  { month: "May", amount: 700 },
-]
+// Real-data earnings chart. Groups my completed jobs as creator by month
+// over the last 6 months. 95% of the job amount is what actually lands
+// (5% platform fee assumed elsewhere).
 
-const maxAmount = Math.max(...monthlyData.map((d) => d.amount))
+function lastSixMonthBuckets() {
+  const buckets: { key: string; label: string; month: number; year: number }[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets.push({
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: d.toLocaleDateString(undefined, { month: "short" }),
+      month: d.getMonth(),
+      year: d.getFullYear(),
+    });
+  }
+  return buckets;
+}
 
 export function EarningsChart() {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const { user } = useAuth();
+  const address = user?.walletAddress;
+  const { jobs } = useJobs();
+
+  const data = useMemo(() => {
+    const buckets = lastSixMonthBuckets();
+    const totals = new Map<string, number>();
+    buckets.forEach((b) => totals.set(b.key, 0));
+
+    jobs.forEach((j) => {
+      if (j.status !== 3) return;
+      if (!address) return;
+      if (j.creator.toLowerCase() !== address.toLowerCase()) return;
+      const d = new Date(j.deadline * 1000);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (totals.has(key)) {
+        totals.set(key, (totals.get(key) ?? 0) + j.amount * 0.95);
+      }
+    });
+
+    return buckets.map((b) => ({ ...b, amount: totals.get(b.key) ?? 0 }));
+  }, [jobs, address]);
+
+  const maxAmount = Math.max(...data.map((d) => d.amount), 1);
+  const totalSixMonths = data.reduce((sum, d) => sum + d.amount, 0);
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6 backdrop-blur-sm">
-      <h3 className="text-lg font-semibold text-foreground">Monthly Earnings</h3>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-base font-semibold text-foreground">
+            Monthly earnings
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Last 6 months, after platform fee
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            6 month total
+          </p>
+          <p className="mt-0.5 text-xl font-bold text-foreground">
+            <AnimatedNumber value={totalSixMonths} format={(n) => n.toFixed(2)} /> USDC
+          </p>
+        </div>
+      </div>
 
-      <div className="mt-6 flex items-end justify-between gap-4" style={{ height: "200px" }}>
-        {monthlyData.map((data, index) => {
-          const heightPercent = (data.amount / maxAmount) * 100
-          const isHovered = hoveredIndex === index
-
-          return (
-            <div
-              key={data.month}
-              className="relative flex flex-1 flex-col items-center"
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex(null)}
-            >
-              {isHovered && (
-                <div className="absolute -top-8 rounded-lg bg-white/10 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                  ${data.amount} USDC
+      {totalSixMonths === 0 ? (
+        <div className="mt-8 flex flex-col items-center justify-center py-8 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="mt-3 text-sm text-foreground font-medium">
+            No earnings in the last 6 months
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground max-w-xs">
+            Once jobs you've claimed get verified and pay out, they'll show up here.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6">
+          <div
+            className="flex items-end justify-between gap-2 sm:gap-4"
+            style={{ height: "180px" }}
+          >
+            {data.map((d, i) => {
+              const heightPercent = (d.amount / maxAmount) * 100;
+              return (
+                <div
+                  key={d.key}
+                  className="group relative flex flex-1 flex-col items-center"
+                >
+                  <div className="relative w-full" style={{ height: "150px" }}>
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 rounded-t-md bg-gradient-to-t from-[#FF2D7A] to-[#2D6EFF]"
+                      initial={{ height: 0 }}
+                      animate={{ height: `${heightPercent}%` }}
+                      transition={{
+                        duration: 0.8,
+                        delay: i * 0.05,
+                        ease: motionEase.out,
+                      }}
+                    />
+                    {/* hover tooltip */}
+                    <div className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="rounded-lg border border-white/10 bg-background/95 px-2 py-1 text-xs text-foreground shadow-lg whitespace-nowrap font-mono">
+                        {d.amount.toFixed(2)} USDC
+                      </div>
+                    </div>
+                  </div>
+                  <span className="mt-2 text-xs text-muted-foreground">
+                    {d.label}
+                  </span>
                 </div>
-              )}
-
-              <div
-                className="w-full cursor-pointer rounded-t-lg transition-all duration-300"
-                style={{
-                  height: `${heightPercent}%`,
-                  minHeight: "20px",
-                  background: isHovered
-                    ? "linear-gradient(180deg, #FF2D7A 0%, #FF2D7A80 100%)"
-                    : "linear-gradient(180deg, #FF2D7A80 0%, #FF2D7A40 100%)",
-                  boxShadow: isHovered ? "0 0 20px #FF2D7A40" : "none",
-                }}
-              />
-
-              <span className="mt-3 text-xs text-muted-foreground">{data.month}</span>
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="mt-4 flex items-center justify-between border-t border-white/[0.08] pt-4">
-        <span className="text-xs text-muted-foreground">$0</span>
-        <span className="text-xs text-muted-foreground">${maxAmount} USDC</span>
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
