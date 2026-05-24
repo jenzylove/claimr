@@ -23,12 +23,19 @@ export function FeaturedJobs({ searchQuery = "", activeFilter = "All" }: Feature
 
   const { execute, isPending, isConfirming, isSuccess, isError } = useCircleWrite();
 
-  // Filter open jobs by search + category, sort newest first, take top 2.
+  // Filter open jobs by search + category, then prioritize Platform jobs + highest amount for Featured.
   const filteredJobs = filterAndSortOpenJobs(jobs, {
     search: searchQuery,
     category: activeFilter,
   });
-  const featuredJobs = filteredJobs.slice(0, 2);
+  const featuredJobs = [...filteredJobs]
+    .sort((a, b) => {
+      const aIsPlatform = isPlatformJob(a.project) ? 1 : 0;
+      const bIsPlatform = isPlatformJob(b.project) ? 1 : 0;
+      if (aIsPlatform !== bIsPlatform) return bIsPlatform - aIsPlatform;
+      return Number(b.amount) - Number(a.amount);
+    })
+    .slice(0, 2);
   const isFiltering = hasActiveFilters({ search: searchQuery, category: activeFilter });
 
   useEffect(() => {
