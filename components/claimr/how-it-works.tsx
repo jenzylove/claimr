@@ -33,8 +33,8 @@ const steps = [
     color: "#F59E0B",
     number: "04",
     title: "USDC settles automatically",
-    description:
-      "Approved work releases USDC to the creator the same block. No invoices. No paid you next week. Just settlement.",
+   description:
+      "Approved work releases USDC to the creator instantly on Arc. No invoices. No delays. Just settlement.",
   },
 ];
 
@@ -68,37 +68,35 @@ export function HowItWorks() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: false, amount: 0.5 }}
                 transition={{ duration: 0.7, ease: "easeOut" }}
-                className="relative flex gap-6 items-start min-h-[40vh]"
+                className="relative flex flex-col items-center text-center min-h-[40vh]"
               >
-                {/* Icon column */}
-                <div className="flex-shrink-0 relative">
+                {/* Icon - large, centered */}
+                <div className="relative mb-8">
                   <div
-                    className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                    className="flex h-24 w-24 items-center justify-center rounded-3xl"
                     style={{
                       backgroundColor: `${step.color}20`,
                       color: step.color,
                       border: `1px solid ${step.color}40`,
                     }}
                   >
-                    <Icon className="h-8 w-8" />
+                    <Icon className="h-12 w-12" />
                   </div>
                   <div
-                    className="absolute -top-2 -right-2 text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                    className="absolute -top-2 -right-2 text-xs font-bold px-2.5 py-1 rounded-full text-white"
                     style={{ backgroundColor: step.color }}
                   >
                     {step.number}
                   </div>
                 </div>
 
-                {/* Content column */}
-                <div className="flex-1 pt-1">
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                    {step.title}
-                  </h3>
-                  <p className="text-base md:text-lg text-[#a1a1aa] leading-relaxed">
-                    {step.description}
-                  </p>
-                </div>
+                {/* Content - centered below icon */}
+                <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  {step.title}
+                </h3>
+                <p className="text-base md:text-lg text-[#a1a1aa] leading-relaxed max-w-xl">
+                  {step.description}
+                </p>
               </motion.div>
             );
           })}
