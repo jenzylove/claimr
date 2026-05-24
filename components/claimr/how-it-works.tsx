@@ -56,36 +56,53 @@ export function HowItWorks() {
             Trustless settlement for crypto creators. No middlemen, no delays.
           </p>
         </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step) => {
+<div className="space-y-12 max-w-3xl mx-auto">
+          {steps.map((step, idx) => {
             const Icon = step.icon;
-            return (
+           return (
               <div
                 key={step.number}
-                className="relative group rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/[0.05]"
+                className="relative flex gap-6 items-start"
               >
-                <div
-                  className="absolute -top-3 -left-3 text-xs font-bold px-2 py-1 rounded-full text-white"
-                  style={{ backgroundColor: step.color }}
-                >
-                  {step.number}
+                {/* Vertical line connector */}
+                {idx < steps.length - 1 && (
+                  <div
+                    className="absolute left-[27px] top-16 bottom-[-3rem] w-px"
+                    style={{
+                      background: `linear-gradient(to bottom, ${step.color}40, transparent)`,
+                    }}
+                  />
+                )}
+
+                {/* Icon column */}
+                <div className="flex-shrink-0 relative">
+                  <div
+                    className="flex h-14 w-14 items-center justify-center rounded-2xl"
+                    style={{
+                      backgroundColor: `${step.color}20`,
+                      color: step.color,
+                      border: `1px solid ${step.color}40`,
+                    }}
+                  >
+                    <Icon className="h-7 w-7" />
+                  </div>
+                  <div
+                    className="absolute -top-2 -right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                    style={{ backgroundColor: step.color }}
+                  >
+                    {step.number}
+                  </div>
                 </div>
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-xl mb-4"
-                  style={{
-                    backgroundColor: `${step.color}20`,
-                    color: step.color,
-                  }}
-                >
-                  <Icon className="h-6 w-6" />
+
+                {/* Content column */}
+                <div className="flex-1 pt-1">
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    {step.title}
+                  </h3>
+                  <p className="text-base text-[#a1a1aa] leading-relaxed">
+                    {step.description}
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-[#a1a1aa] leading-relaxed">
-                  {step.description}
-                </p>
               </div>
             );
           })}
