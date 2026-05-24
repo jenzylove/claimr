@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Clock } from "lucide-react";
+import { Clock, Users } from "lucide-react";
 import { CLAIMR_ESCROW_ADDRESS as CLAIMR_ADDRESS } from "@/lib/contracts";
 import { useJobs } from "@/lib/useJobs";
 import { filterAndSortOpenJobs } from "@/lib/jobFilters";
@@ -25,12 +25,27 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
 
   const { execute, isPending, isConfirming, isSuccess, isError } = useCircleWrite();
 
-  // Filter open jobs by search + category, sort newest first, skip the top 2 (those are Featured).
+  // Filter open jobs by search + category.
   const filteredJobs = filterAndSortOpenJobs(jobs, {
     search: searchQuery,
     category: activeFilter,
   });
-  const latestJobs = filteredJobs.slice(2);
+
+  // Group identical jobs (same project + title + criteria + amount) as multi-slot.
+  // Each group shows once with a "N slots available" badge.
+  const grouped = filteredJobs.reduce((acc, job) => {
+    const key = `${job.project}-${job.title}-${job.criteria}-${job.amount}`;
+    if (!acc[key]) {
+      acc[key] = { ...job, slotJobIds: [job.id] };
+    } else {
+      acc[key].slotJobIds.push(job.id);
+    }
+    return acc;
+  }, {} as Record<string, any>);
+
+  const groupedJobs = Object.values(grouped);
+  // Skip the top 2 (Featured shows those).
+  const latestJobs = groupedJobs.slice(2);
 
   useEffect(() => {
     if (isSuccess) {
@@ -43,18 +58,18 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
     if (isError) setClaimingId(null);
   }, [isError]);
 
-  const handleClaim = (jobId: number) => {
+  const handleClaim = (firstSlotId: number) => {
     if (!authenticated) {
       router.push("/onboarding?role=creator");
       return;
     }
-    setClaimingId(jobId);
+    setClaimingId(firstSlotId);
     execute({
       contractAddress: CLAIMR_ADDRESS,
       abiFunctionSignature: "claimJob(uint256)",
-      abiParameters: [jobId.toString()],
+      abiParameters: [firstSlotId.toString()],
     }).catch(() => {
-      // Hook surfaces error; nothing more to do here.
+      // Hook surfaces error.
     });
   };
 
@@ -62,26 +77,24 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
     claimingId === jobId && (isPending || isConfirming);
 
   if (isLoading) return null;
-
-  // Hide entirely if there's nothing beyond the Featured slice. Avoids the
-  // confusing "No more open jobs" empty card sitting under a Featured section
-  // that's already showing the only jobs that exist.
   if (latestJobs.length === 0) return null;
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-foreground">Latest Jobs</h2>
       <div className="grid gap-4 sm:grid-cols-2">
-        {latestJobs.map((job, index) => {
+        {latestJobs.map((job: any, index: number) => {
           const color = COLORS[index % COLORS.length];
           const daysLeft = Math.max(
             0,
             Math.ceil((job.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
           );
+          const slotCount = job.slotJobIds.length;
+          const firstSlotId = job.slotJobIds[0];
 
           return (
             <div
-              key={job.id}
+              key={`${job.project}-${job.title}-${job.amount}`}
               className="group rounded-xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm transition-all hover:border-white/20"
             >
               <div className="flex items-start gap-4">
@@ -107,6 +120,12 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
                         Platform
                       </span>
                     )}
+                    {slotCount > 1 && (
+                      <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-white/10 text-white/80 border border-white/20 font-semibold flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {slotCount} slots
+                      </span>
+                    )}
                   </h3>
 
                   <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
@@ -119,11 +138,11 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
 
                   <div className="mt-4 flex items-center justify-end">
                     <button
-                      onClick={() => handleClaim(job.id)}
-                      disabled={isJobLoading(job.id)}
+                      onClick={() => handleClaim(firstSlotId)}
+                      disabled={isJobLoading(firstSlotId)}
                       className="rounded-lg bg-[#FF2D7A] px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-[#FF2D7A]/90 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {isJobLoading(job.id) ? "Claiming..." : "Claim Job"}
+                      {isJobLoading(firstSlotId) ? "Claiming..." : "Claim Job"}
                     </button>
                   </div>
                 </div>
