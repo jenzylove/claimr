@@ -1,6 +1,7 @@
 "use client";
 
 import { Briefcase, Target, Bot, Zap } from "lucide-react";
+import { motion } from "motion/react";
 
 const steps = [
   {
@@ -40,8 +41,8 @@ const steps = [
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="relative py-24 px-6 overflow-hidden">
-      <div className="relative z-10 max-w-6xl mx-auto">
-        <div className="text-center mb-16">
+      <div className="relative z-10 max-w-3xl mx-auto">
+        <div className="text-center mb-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 text-sm text-[#a1a1aa] bg-white/5 border border-white/10 rounded-full">
             How it works
           </div>
@@ -56,38 +57,33 @@ export function HowItWorks() {
             Trustless settlement for crypto creators. No middlemen, no delays.
           </p>
         </div>
-<div className="space-y-12 max-w-3xl mx-auto">
+
+        <div className="space-y-32 relative">
           {steps.map((step, idx) => {
             const Icon = step.icon;
-           return (
-              <div
+            return (
+              <motion.div
                 key={step.number}
-                className="relative flex gap-6 items-start"
+                initial={{ opacity: 0, y: 60 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.5 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
+                className="relative flex gap-6 items-start min-h-[40vh]"
               >
-                {/* Vertical line connector */}
-                {idx < steps.length - 1 && (
-                  <div
-                    className="absolute left-[27px] top-16 bottom-[-3rem] w-px"
-                    style={{
-                      background: `linear-gradient(to bottom, ${step.color}40, transparent)`,
-                    }}
-                  />
-                )}
-
                 {/* Icon column */}
                 <div className="flex-shrink-0 relative">
                   <div
-                    className="flex h-14 w-14 items-center justify-center rounded-2xl"
+                    className="flex h-16 w-16 items-center justify-center rounded-2xl"
                     style={{
                       backgroundColor: `${step.color}20`,
                       color: step.color,
                       border: `1px solid ${step.color}40`,
                     }}
                   >
-                    <Icon className="h-7 w-7" />
+                    <Icon className="h-8 w-8" />
                   </div>
                   <div
-                    className="absolute -top-2 -right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                    className="absolute -top-2 -right-2 text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
                     style={{ backgroundColor: step.color }}
                   >
                     {step.number}
@@ -96,23 +92,23 @@ export function HowItWorks() {
 
                 {/* Content column */}
                 <div className="flex-1 pt-1">
-                  <h3 className="text-xl font-semibold text-white mb-2">
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
                     {step.title}
                   </h3>
-                  <p className="text-base text-[#a1a1aa] leading-relaxed">
+                  <p className="text-base md:text-lg text-[#a1a1aa] leading-relaxed">
                     {step.description}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
 
-        <div className="mt-12 text-center">
+        <div className="mt-32 text-center">
           <p className="text-sm text-[#a1a1aa]">
             Built on <span className="text-white font-medium">Arc</span> · Powered by{" "}
-            <span className="text-white font-medium">Circle Wallets</span> ·
-            Verified by <span className="text-white font-medium">Claude</span>
+            <span className="text-white font-medium">Circle Wallets</span> · Verified by{" "}
+            <span className="text-white font-medium">Claude</span>
           </p>
         </div>
       </div>
