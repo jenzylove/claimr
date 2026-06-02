@@ -11,6 +11,8 @@ import {
   LogOut,
   LogIn,
   Lock,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
@@ -31,7 +33,7 @@ const menuItems: MenuItem[] = [
   { icon: Settings, label: "Settings", href: "/dashboard/settings", requiresAuth: true },
 ];
 
-function UserProfileOrGuestCta() {
+function UserProfileOrGuestCta({ onNavigate }: { onNavigate?: () => void }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { user, logout, authenticated } = useAuth();
@@ -49,6 +51,7 @@ function UserProfileOrGuestCta() {
         </p>
         <Link
           href="/onboarding?mode=signin"
+          onClick={onNavigate}
           className="flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-[#FF2D7A] to-[#2D6EFF] px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
         >
           <LogIn className="h-3.5 w-3.5" />
@@ -68,6 +71,7 @@ function UserProfileOrGuestCta() {
 
   const handleLogout = async () => {
     await logout();
+    if (onNavigate) onNavigate();
     router.push("/");
   };
 
@@ -95,17 +99,14 @@ function UserProfileOrGuestCta() {
   );
 }
 
-export function DashboardSidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { authenticated } = useAuth();
 
   return (
-    <aside
-      data-tour-id="dashboard-sidebar"
-      className="fixed left-0 top-0 h-screen w-64 hidden md:flex md:flex-col border-r border-border/50 bg-background/80 backdrop-blur-xl"
-    >
+    <>
       <div className="p-6">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2" onClick={onNavigate}>
           <Logo size={32} />
           <span className="text-xl font-bold text-foreground">Claimr</span>
         </Link>
@@ -120,6 +121,7 @@ export function DashboardSidebar() {
               <li key={item.label}>
                 <Link
                   href={item.href}
+                  onClick={onNavigate}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                     isActive
                       ? "bg-[#FF2D7A]/10 text-[#FF2D7A]"
@@ -139,7 +141,77 @@ export function DashboardSidebar() {
         </ul>
       </nav>
 
-      <UserProfileOrGuestCta />
-    </aside>
+      <UserProfileOrGuestCta onNavigate={onNavigate} />
+    </>
+  );
+}
+
+export function DashboardSidebar() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close menu when navigating (Link clicked)
+  const closeMobile = () => setMobileOpen(false);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  return (
+    <>
+      {/* Mobile Header - only visible on mobile */}
+      <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-14 px-4 border-b border-border/50 bg-background/90 backdrop-blur-xl md:hidden">
+        <Link href="/" className="flex items-center gap-2">
+          <Logo size={24} />
+          <span className="text-base font-bold text-foreground">Claimr</span>
+        </Link>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-lg text-foreground hover:bg-muted"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      </header>
+
+      {/* Mobile Drawer Backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={closeMobile}
+        />
+      )}
+
+      {/* Mobile Drawer */}
+      <aside
+        className={`fixed left-0 top-0 z-50 h-screen w-72 flex flex-col border-r border-border/50 bg-background transition-transform duration-300 md:hidden ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <button
+          onClick={closeMobile}
+          className="absolute top-3 right-3 p-2 rounded-lg text-foreground hover:bg-muted z-10"
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <SidebarContent onNavigate={closeMobile} />
+      </aside>
+
+      {/* Desktop Sidebar - only visible on desktop */}
+      <aside
+        data-tour-id="dashboard-sidebar"
+        className="fixed left-0 top-0 h-screen w-64 hidden md:flex md:flex-col border-r border-border/50 bg-background/80 backdrop-blur-xl"
+      >
+        <SidebarContent />
+      </aside>
+    </>
   );
 }
