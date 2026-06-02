@@ -16,7 +16,7 @@ export function Footer() {
 
           {/* Links */}
           <div className="flex items-center gap-8 text-sm text-[#a1a1aa]">
-            <a href="https://x.com/" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Twitter</a>
+            <a href="https://x.com/claimr_" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Twitter</a>
             <a href="https://github.com/jenzylove/claimr" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
             <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
             <Link href="/docs#status" className="hover:text-white transition-colors">Status</Link>
