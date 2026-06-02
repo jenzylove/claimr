@@ -1,47 +1,23 @@
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
-import { Providers } from './providers'
-import { DebugPanel } from '@/components/claimr/debug-panel'
-import './globals.css'
+import { DashboardSidebar } from "@/components/claimr/dashboard-sidebar";
+import { LivingBackground } from "@/components/primitives/living-background";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: 'Claimr - Get Paid. No Trust Required.',
-  description: 'The AI-powered marketplace where creators and crypto projects settle deals with AI verification and instant USDC payments on Arc blockchain.',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-      {
-        url: '/icon-32x32.png',
-        type: 'image/png',
-        sizes: '32x32',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
-}
-
-export default function RootLayout({
+export default function DashboardLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className="bg-background">
-      <body className="font-sans antialiased bg-background text-foreground">
-        <Providers>
-          {children}
-          {process.env.NODE_ENV !== 'production' && <DebugPanel />}
-          {process.env.NODE_ENV === 'production' && <Analytics />}
-        </Providers>
-      </body>
-    </html>
-  )
+    <div className="min-h-screen bg-background">
+      <LivingBackground />
+
+      <DashboardSidebar />
+
+      {/* Main Content — no left padding on mobile, sidebar width on desktop */}
+      <main className="md:pl-64">
+        <div className="relative min-h-screen p-4 pt-20 md:p-8 md:pt-8">
+          <div className="mx-auto max-w-6xl">{children}</div>
+        </div>
+      </main>
+    </div>
+  );
 }

@@ -14,8 +14,8 @@ export default function DashboardLayout({
       <DashboardSidebar />
 
       {/* Main Content */}
-      <main className="pl-64">
-        <div className="relative min-h-screen p-8">
+      <main className="pt-14 md:pt-0 md:pl-64">
+        <div className="relative min-h-screen p-4 md:p-8">
           <div className="mx-auto max-w-6xl">{children}</div>
         </div>
       </main>
