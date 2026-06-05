@@ -104,8 +104,8 @@ export function FeaturedJobs({ searchQuery = "", activeFilter = "All" }: Feature
             className="group relative overflow-hidden rounded-xl p-[1px] backdrop-blur-sm transition-all"
             style={{ background: "linear-gradient(135deg, #FF2D7A, #2D6EFF)" }}
           >
-            <div className="relative h-full rounded-xl bg-[#0a0a0a] p-5">
-              <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-100/20 to-white/20 px-2 py-1 text-xs font-medium text-amber-100">
+            <div className="relative h-full rounded-xl bg-[#0a0a0a] p-5 pt-12">
+              <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-100/20 to-white/20 px-2 py-1 text-xs font-medium text-amber-100">
                 <Diamond className="h-3 w-3 fill-amber-100/50" />
                 Featured
               </div>
