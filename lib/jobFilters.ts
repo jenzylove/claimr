@@ -87,6 +87,21 @@ function matchesCategory(job: Job, filter: string): boolean {
   return keywords.some((k) => haystack.includes(k));
 }
 
+/**
+ * Best-effort category for a job, derived from the same keyword heuristics
+ * used for filtering. Returns the first category whose keywords match the
+ * job's title + criteria, or null if none match. Used for display tags.
+ */
+export function getJobCategory(job: Job): string | null {
+  const haystack = `${job.title} ${job.criteria}`.toLowerCase();
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((k) => haystack.includes(k))) {
+      return category;
+    }
+  }
+  return null;
+}
+
 export interface JobFilters {
   search?: string;
   category?: string;

@@ -1,13 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Clock, Users } from "lucide-react";
 import { CLAIMR_ESCROW_ADDRESS as CLAIMR_ADDRESS } from "@/lib/contracts";
 import { useJobs } from "@/lib/useJobs";
 import { filterAndSortOpenJobs } from "@/lib/jobFilters";
 import { useAuth } from "@/lib/auth";
 import { useCircleWrite } from "@/lib/useCircleWrite";
-import { isPlatformJob } from "@/lib/admin-jobs";
+import { JobCard } from "@/components/claimr/job-card";
 import { useState, useEffect } from "react";
 
 const COLORS = ["#FF2D7A", "#2D6EFF", "#10B981", "#8B5CF6", "#F59E0B", "#06B6D4"];
@@ -32,7 +31,7 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
   });
 
   // Group identical jobs (same project + title + criteria + amount) as multi-slot.
-  // Each group shows once with a "N slots available" badge.
+  // Each group shows once with a "N slots open" badge.
   const grouped = filteredJobs.reduce((acc, job) => {
     const key = `${job.project}-${job.title}-${job.criteria}-${job.amount}`;
     if (!acc[key]) {
@@ -85,10 +84,6 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
       <div className="grid gap-4 sm:grid-cols-2">
         {latestJobs.map((job: any, index: number) => {
           const color = COLORS[index % COLORS.length];
-          const daysLeft = Math.max(
-            0,
-            Math.ceil((job.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
-          );
           const slotCount = job.slotJobIds.length;
           const firstSlotId = job.slotJobIds[0];
 
@@ -97,56 +92,14 @@ export function LatestJobs({ searchQuery = "", activeFilter = "All" }: LatestJob
               key={`${job.project}-${job.title}-${job.amount}`}
               className="group rounded-xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm transition-all hover:border-white/20"
             >
-              <div className="flex items-start gap-4">
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-xl text-base font-bold"
-                  style={{ backgroundColor: `${color}20`, color }}
-                >
-                  {job.project.slice(2, 4).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground font-mono">
-                      {job.project.slice(0, 6)}...{job.project.slice(-4)}
-                    </p>
-                    <span className="text-base font-bold text-green-400">
-                      {job.amount} USDC
-                    </span>
-                  </div>
-                  <h3 className="mt-1 font-medium text-foreground flex items-center gap-2 flex-wrap">
-                    {job.title}
-                    {isPlatformJob(job.project) && (
-                      <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-gradient-to-r from-[#FF2D7A]/15 to-[#2D6EFF]/15 text-[#FF2D7A] border border-[#FF2D7A]/30 font-semibold">
-                        Platform
-                      </span>
-                    )}
-                    {slotCount > 1 && (
-                      <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-full bg-white/10 text-white/80 border border-white/20 font-semibold flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {slotCount} slots
-                      </span>
-                    )}
-                  </h3>
-
-                  <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>{job.criteria}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {daysLeft}d left
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-end">
-                    <button
-                      onClick={() => handleClaim(firstSlotId)}
-                      disabled={isJobLoading(firstSlotId)}
-                      className="rounded-lg bg-[#FF2D7A] px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-[#FF2D7A]/90 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isJobLoading(firstSlotId) ? "Claiming..." : "Claim Job"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <JobCard
+                job={job}
+                variant="latest"
+                accentColor={color}
+                slotCount={slotCount}
+                onClaim={() => handleClaim(firstSlotId)}
+                isClaiming={isJobLoading(firstSlotId)}
+              />
             </div>
           );
         })}
