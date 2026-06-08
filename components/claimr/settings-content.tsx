@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
   Wallet,
@@ -15,45 +16,104 @@ import {
 import {
   readCreatorProfile,
   writeCreatorProfile,
-  normalizeXHandle,
   type CreatorProfile,
 } from "@/lib/profile-store";
+
+interface XStatus {
+  linked: boolean;
+  handle: string | null;
+}
 
 export function SettingsContent() {
   const { user, authenticated } = useAuth();
   const address = user?.walletAddress;
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [xStatus, setXStatus] = useState<XStatus | null>(null);
+  const [xLoading, setXLoading] = useState(true);
+  const [xMessage, setXMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     if (!address) return;
     setProfile(readCreatorProfile(address));
   }, [address]);
 
+  const refreshXStatus = async (addr: string) => {
+    setXLoading(true);
+    try {
+      const res = await fetch(`/api/x/status?wallet=${addr}`, { cache: "no-store" });
+      const data = await res.json();
+      setXStatus({ linked: !!data.linked, handle: data.handle ?? null });
+    } catch {
+      setXStatus({ linked: false, handle: null });
+    } finally {
+      setXLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!address) return;
+    refreshXStatus(address);
+  }, [address]);
+
+  useEffect(() => {
+    const flag = searchParams.get("x_linked");
+    if (!flag) return;
+
+    const messages: Record<string, { kind: "success" | "error"; text: string }> = {
+      success: { kind: "success", text: `X account @${searchParams.get("handle") ?? ""} connected and verified.` },
+      taken: { kind: "error", text: "That X account is already linked to a different wallet." },
+      denied: { kind: "error", text: "X connection was cancelled." },
+      expired: { kind: "error", text: "The connection session expired. Please try again." },
+      error: { kind: "error", text: "Could not connect X account. Please try again." },
+    };
+    setXMessage(messages[flag] ?? null);
+
+    if (flag === "success" && address) refreshXStatus(address);
+    router.replace("/dashboard/settings");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, address]);
+
+  const handleConnectX = () => {
+    if (!address) return;
+    window.location.href = `/api/x/start?wallet=${address}`;
+  };
+
+  const handleDisconnectX = async () => {
+    if (!address) return;
+    setDisconnecting(true);
+    try {
+      await fetch("/api/x/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: address }),
+      });
+      setXStatus({ linked: false, handle: null });
+      setXMessage(null);
+    } catch {
+      setXMessage({ kind: "error", text: "Could not disconnect. Please try again." });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
   const handleSave = () => {
     if (!address || !profile) return;
     setError(null);
-
-    const normalizedX = profile.xHandle ? normalizeXHandle(profile.xHandle) : "";
-    if (profile.xHandle && !normalizedX) {
-      setError(
-        "X handle is not valid. Use only letters, numbers, and underscores (max 15 chars)."
-      );
-      return;
-    }
 
     if (profile.payoutAddress && !/^0x[a-fA-F0-9]{40}$/.test(profile.payoutAddress)) {
       setError("Payout address must be a valid 0x address.");
       return;
     }
 
-    const saved = writeCreatorProfile(address, {
-      ...profile,
-      xHandle: normalizedX,
-    });
-    setProfile(saved);
+    const result = writeCreatorProfile(address, { ...profile });
+    setProfile(result);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -88,9 +148,7 @@ export function SettingsContent() {
   }
 
   const initials = (profile.displayName || "You").slice(0, 2).toUpperCase();
-  const shortAddr = address
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : "Loading...";
+  const shortAddr = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Loading...";
 
   return (
     <div className="space-y-8">
@@ -101,7 +159,6 @@ export function SettingsContent() {
         </p>
       </div>
 
-      {/* Profile */}
       <section className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
         <h2 className="mb-6 text-lg font-semibold text-foreground">Profile</h2>
 
@@ -124,27 +181,9 @@ export function SettingsContent() {
             <input
               type="text"
               value={profile.displayName}
-              onChange={(e) =>
-                setProfile({ ...profile, displayName: e.target.value })
-              }
+              onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
               placeholder="How you'd like to be known"
               maxLength={40}
-              className={inputStyle}
-            />
-          </Field>
-
-          <Field
-            label="X (Twitter)"
-            icon={<Twitter className="h-4 w-4 text-muted-foreground" />}
-            hint="OAuth connection coming soon. For now, enter your handle manually."
-          >
-            <input
-              type="text"
-              value={profile.xHandle}
-              onChange={(e) =>
-                setProfile({ ...profile, xHandle: e.target.value })
-              }
-              placeholder="@yourhandle"
               className={inputStyle}
             />
           </Field>
@@ -162,7 +201,67 @@ export function SettingsContent() {
         </div>
       </section>
 
-      {/* Wallet */}
+      <section className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
+        <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Twitter className="h-5 w-5 text-[#2D6EFF]" />
+          X Account
+        </h2>
+        <p className="mb-5 text-sm text-muted-foreground">
+          Connect your X account to verify ownership. Submissions are checked
+          against your verified handle to prevent spoofing.
+        </p>
+
+        {xLoading ? (
+          <div className="h-14 rounded-lg bg-white/[0.03] animate-pulse" />
+        ) : xStatus?.linked ? (
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-[#22C55E]/20 bg-[#22C55E]/5 p-4 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#22C55E]/15 shrink-0">
+                <Check className="h-5 w-5 text-[#22C55E]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  Connected as @{xStatus.handle}
+                </p>
+                <p className="text-xs text-muted-foreground">Verified ownership</p>
+              </div>
+            </div>
+            <button
+              onClick={handleDisconnectX}
+              disabled={disconnecting}
+              className="shrink-0 rounded-lg border border-white/10 px-3 py-1.5 text-sm text-muted-foreground hover:text-red-400 hover:border-red-400/30 transition-all disabled:opacity-60"
+            >
+              {disconnecting ? "Disconnecting..." : "Disconnect"}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleConnectX}
+            className="flex items-center gap-2 rounded-lg bg-[#2D6EFF] px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#2D6EFF]/90"
+          >
+            <Twitter className="h-4 w-4" />
+            Connect X account
+          </button>
+        )}
+
+        {xMessage && (
+          <div
+            className={`mt-4 rounded-lg border p-3 text-xs flex items-start gap-2 ${
+              xMessage.kind === "success"
+                ? "border-[#22C55E]/30 bg-[#22C55E]/5 text-[#22C55E]"
+                : "border-red-500/30 bg-red-500/5 text-red-400"
+            }`}
+          >
+            {xMessage.kind === "success" ? (
+              <Check className="h-4 w-4 mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            )}
+            <p>{xMessage.text}</p>
+          </div>
+        )}
+      </section>
+
       <section className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
           <Wallet className="h-5 w-5 text-[#2D6EFF]" />
@@ -171,9 +270,7 @@ export function SettingsContent() {
 
         <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.02] p-4 flex-wrap">
           <div className="min-w-0">
-            <p className="font-mono text-sm text-foreground break-all">
-              {address}
-            </p>
+            <p className="font-mono text-sm text-foreground break-all">{address}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Arc Testnet, embedded wallet by Circle. Non-custodial, only you control the keys.
             </p>
@@ -199,9 +296,7 @@ export function SettingsContent() {
             <input
               type="text"
               value={profile.payoutAddress}
-              onChange={(e) =>
-                setProfile({ ...profile, payoutAddress: e.target.value })
-              }
+              onChange={(e) => setProfile({ ...profile, payoutAddress: e.target.value })}
               placeholder="0x..."
               className={`${inputStyle} font-mono text-xs`}
             />
@@ -209,11 +304,8 @@ export function SettingsContent() {
         </div>
       </section>
 
-      {/* Notifications */}
       <section className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
-        <h2 className="mb-6 text-lg font-semibold text-foreground">
-          Notifications
-        </h2>
+        <h2 className="mb-6 text-lg font-semibold text-foreground">Notifications</h2>
 
         <div className="space-y-4">
           <NotifRow
@@ -241,7 +333,6 @@ export function SettingsContent() {
         </p>
       </section>
 
-      {/* Save */}
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}

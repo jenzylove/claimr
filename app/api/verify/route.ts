@@ -4,7 +4,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAIMR_ABI } from "@/lib/contracts";
 import { arcTestnet } from "@/lib/chains";
-
+import { sql } from "@/lib/db";
 const CLAIMR_ADDRESS = "0x1a0f14f7485664F10bF32A0C94163Ec50a674900";
 
 const anthropic = new Anthropic({
@@ -28,9 +28,16 @@ async function fetchTweet(tweetUrl: string) {
   const rawText = textMatch ? textMatch[1] : "";
   const text = rawText.replace(/<[^>]+>/g, " ").replace(/&[^;]+;/g, " ").trim();
 
+  // author_url looks like https://twitter.com/<handle> (or x.com). The last
+  // path segment is the real @handle, which is what we match against the
+  // creator's verified handle. author_name is just the display name.
+  const authorUrl: string = data.author_url || "";
+  const handleFromUrl = authorUrl.split("/").filter(Boolean).pop() || "";
+
   return {
     text,
     author: data.author_name || "",
+    handle: handleFromUrl,
   };
 }
 
@@ -137,6 +144,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // STRICT X OWNERSHIP CHECK
+    // The creator who claimed this job must have a verified X handle on file,
+    // and every submitted tweet must be authored by that exact handle.
+    // This is what prevents submitting someone else's tweet.
+    const creatorWallet = (job.creator || "").toLowerCase();
+    let verifiedHandle = "";
+    try {
+      const rows = await sql`
+        SELECT x_handle FROM users
+        WHERE wallet_address = ${creatorWallet} AND x_handle IS NOT NULL
+      `;
+      verifiedHandle = rows[0]?.x_handle || "";
+    } catch (e) {
+      console.log(`[VERIFY] Neon lookup failed:`, e);
+      return NextResponse.json(
+        { verified: false, reason: "Could not verify creator identity. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    if (!verifiedHandle) {
+      console.log(`[VERIFY] Creator ${creatorWallet} has no verified X handle.`);
+      return NextResponse.json({
+        verified: false,
+        reason: "You must connect your X account in Settings before your work can be verified.",
+      });
+    }
+    console.log(`[VERIFY] Creator verified handle: @${verifiedHandle}`);
+
     const urls = submissionData
       .split(/[\n\s]+/)
       .filter((u: string) => u.includes("twitter.com") || u.includes("x.com"));
@@ -152,7 +188,7 @@ export async function POST(req: NextRequest) {
     let allPassed = true;
     const results = [];
 
-    for (const url of urls) {
+   for (const url of urls) {
       const tweet = await fetchTweet(url);
       if (!tweet || !tweet.text) {
         allPassed = false;
@@ -160,6 +196,19 @@ export async function POST(req: NextRequest) {
           url,
           passed: false,
           reason: "Tweet not found or inaccessible",
+        });
+        continue;
+      }
+
+      // STRICT: the tweet's author handle must match the creator's verified
+      // handle (case-insensitive). Blocks submitting anyone else's tweet.
+      if (tweet.handle.toLowerCase() !== verifiedHandle.toLowerCase()) {
+        allPassed = false;
+        results.push({
+          url,
+          passed: false,
+          author: tweet.author,
+          reason: `Tweet was posted by @${tweet.handle || "unknown"}, but your verified account is @${verifiedHandle}. You can only submit your own tweets.`,
         });
         continue;
       }

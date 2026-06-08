@@ -116,8 +116,14 @@ export function filterAndSortOpenJobs(
   jobs: Job[],
   filters: JobFilters = {}
 ): Job[] {
+  // A job is shown in discover only if it is open (status 0) AND its deadline
+  // has not passed. Expired-but-still-open jobs are filtered out here so they
+  // never appear as claimable. (Recovering their escrowed USDC is a separate
+  // on-chain concern handled by reclaimExpiredJob in a future contract redeploy.)
+  const nowSeconds = Math.floor(Date.now() / 1000);
   return jobs
     .filter((j) => j.status === 0)
+    .filter((j) => j.deadline > nowSeconds)
     .filter((j) => matchesSearch(j, filters.search ?? ""))
     .filter((j) => matchesCategory(j, filters.category ?? "All"))
     .sort((a, b) => b.id - a.id);

@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { SettingsContent } from "@/components/claimr/settings-content"
 
 export default function SettingsPage() {
@@ -10,7 +11,9 @@ export default function SettingsPage() {
       </div>
 
       <div className="relative mx-auto max-w-2xl">
-        <SettingsContent />
+        <Suspense fallback={null}>
+          <SettingsContent />
+        </Suspense>
       </div>
     </div>
   )
